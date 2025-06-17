@@ -46,9 +46,11 @@ def login_screen(db):
             else:
                 st.error(f"COREN ou senha inválidos")
 
-def logout():
-    st.session_state["autenticado"] = False
-    st.session_state["expira_em"] = None
-    st.session_state["usuario"] = None
-    st.success("Logout realizado com sucesso.")
-    st.rerun()
+def logout_sidebar():
+    with st.sidebar:
+        if st.button("🔒 Logout"):
+            st.session_state["autenticado"] = False
+            st.session_state["expira_em"] = None
+            st.session_state["usuario"] = None
+            st.success("Logout realizado com sucesso.")
+            st.rerun()

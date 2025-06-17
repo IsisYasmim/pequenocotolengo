@@ -5,9 +5,10 @@ from firebase_config import get_db, get_funcionarios_len
 db = get_db()
 
 class Funcionario:
-    def __init__(self, nome, coren, cargo, tipo_vinculo, data_admissao, turno=None, local=None, senha=None, id=None):
+    def __init__(self, nome, matricula, coren, cargo, tipo_vinculo, data_admissao, turno=None, local=None, senha=None, id=None, is_admin=None):
         self.id = id
         self.nome = nome
+        self.matricula = matricula
         self.coren = coren
         self.cargo = cargo
         self.tipo_vinculo = tipo_vinculo
@@ -15,6 +16,7 @@ class Funcionario:
         self.turno = turno
         self.local = local
         self.senha = senha
+        self.is_admin = is_admin
 
     def set_senha(self, senha):
         return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') 
@@ -36,6 +38,7 @@ class Funcionario:
             funcionario_data = {
                 'id': novoId,
                 'nome': self.nome,
+                'matricula': self.matricula,
                 'coren': self.coren,
                 'cargo': self.cargo,
                 'tipo_vinculo': self.tipo_vinculo,
@@ -50,7 +53,7 @@ class Funcionario:
             self.id = novoId 
 
         except Exception as e:
-            raise Exception(f"Erro ao salvar funcionário: {str(e)}")
+            raise Exception(f"{str(e)}")
 
     @classmethod
     def get_funcionario_por_id(db, id):
@@ -61,6 +64,7 @@ class Funcionario:
                 return Funcionario(
                 id=id,
                 nome=data['nome'],
+                matricula=data['matricula'],
                 coren=data['coren'],
                 cargo=data['cargo'],
                 tipo_vinculo=data['tipo_vinculo'],
@@ -89,6 +93,7 @@ class Funcionario:
                     resultados.append(Funcionario(
                         id=doc.id,
                         nome=data['nome'],
+                        matricula=data['matricula'],
                         coren=data['coren'],
                         cargo=data['cargo'],
                         tipo_vinculo=data['tipo_vinculo'],

@@ -18,3 +18,10 @@ def get_funcionarios_len():
     docs = funcionarios.stream()
     # retorna o tamanho da coleção de funcionários
     return len(list(docs))
+
+def get_cargos_len():
+    db = get_db()
+    cargos = db.collection('cargos')
+    docs = cargos.stream()
+    # retorna o tamanho da coleção de cargos
+    return len(list(docs))  

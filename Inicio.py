@@ -4,9 +4,7 @@ from firebase_config import get_db
 from datetime import datetime
 from modules import login
 
-def main():
-    st.set_page_config(page_title="Sistema Cotolengo", layout="wide")
-    db = get_db()
+def init_session():
     # inicializa sessão
     if "autenticado" not in st.session_state:
         st.session_state["autenticado"] = False
@@ -28,11 +26,16 @@ def main():
         else:
             st.rerun()
 
+def main():
+    st.set_page_config(page_title="Sistema Cotolengo", layout="wide")
+    init_session()
+    db = get_db()
+    
+
     # se autenticado, mostra a aplicação principal com sidebar
     usuario = st.session_state["usuario"]
-    with st.sidebar:
-        if st.button("🔒 Logout"):
-            login.logout()
+    
+    login.logout_sidebar()
 
     # Conteúdo principal
     st.markdown(f"## 👋 Bem-vindo, **{usuario.nome}**!")
