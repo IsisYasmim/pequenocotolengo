@@ -20,8 +20,8 @@ def login_screen(db):
         submit = st.form_submit_button("Entrar")
 
         if submit:
-            funcionarios_ref = db.collection('funcionarios')
-            docs = funcionarios_ref.where('coren', '==', coren).stream()
+            funcionarios = db.collection('funcionarios')
+            docs = funcionarios.where('coren', '==', coren).stream()
             funcionario = None
             for doc in docs:
                 data = doc.to_dict()

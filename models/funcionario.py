@@ -1,5 +1,5 @@
 from datetime import date
-import hashlib
+import bcrypt
 from firebase_config import get_db, get_funcionarios_len
 
 db = get_db()
@@ -14,13 +14,13 @@ class Funcionario:
         self.data_admissao = data_admissao
         self.turno = turno
         self.local = local
-        self.senha = self.set_senha(senha) if senha else None
+        self.senha = senha
 
     def set_senha(self, senha):
-        return hashlib.sha256(senha.encode('utf-8')).hexdigest()
+        return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') 
 
     def checa_senha(self, senha):
-        return self.senha == hashlib.sha256(senha.encode()).hexdigest()
+        return bcrypt.checkpw(senha.encode('utf-8'), self.senha.encode('utf-8'))
 
     def save(self, db):
         try:
@@ -42,7 +42,7 @@ class Funcionario:
                 'data_admissao': self.data_admissao.isoformat(),
                 'turno': self.turno,
                 'local': self.local,
-                'senha': self.senha
+                'senha': self.set_senha(self.senha) if self.senha else None
             }
             # salva o funcionário no Firestore
             funcionarios.document(novoId).set(funcionario_data)
