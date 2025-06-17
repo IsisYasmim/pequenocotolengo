@@ -28,6 +28,7 @@ def login_screen(db):
                 funcionario = Funcionario(
                     id=doc.id,
                     nome=data.get('nome'),
+                    matricula=data.get('matricula'),
                     coren=data.get('coren'),
                     cargo=data.get('cargo'),
                     tipo_vinculo=data.get('tipo_vinculo'),

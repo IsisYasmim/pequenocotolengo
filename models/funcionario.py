@@ -55,6 +55,30 @@ class Funcionario:
         except Exception as e:
             raise Exception(f"{str(e)}")
 
+    def delete(self, db):
+        try:
+            doc_ref = db.collection("funcionarios").document(self.id)
+            doc_ref.delete()
+        except Exception as e:
+            raise Exception(f"Erro ao excluir funcionário: {str(e)}")
+
+    @staticmethod
+    def get_all(db):
+        try:
+            funcionarios_ref = db.collection('funcionarios').get()
+            return [f.to_dict() for f in funcionarios_ref]
+        except Exception as e:
+            raise Exception(f"Erro ao buscar funcionários: {str(e)}")
+    
+    @staticmethod
+    def buscar_por_coren(db, coren):
+        try:
+            resultado = db.collection('funcionarios').where('coren', '==', coren).get()
+            return resultado[0].to_dict() if resultado else None
+        except Exception as e:
+            raise Exception(f"Erro ao buscar funcionário: {str(e)}")
+
+
     @classmethod
     def get_funcionario_por_id(db, id):
         try:
@@ -78,33 +102,37 @@ class Funcionario:
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionário: {str(e)}")
 
-    @classmethod
-    def buscar_por_nome(db, nome):
+    @staticmethod
+    def buscar_por_nome(db, nome_busca):
         try:
-            nome = nome.strip().lower()
-            funcionarios = db.collection('funcionarios')
-            docs = funcionarios.stream()
+            funcionarios_ref = db.collection('funcionarios').get()
+            # Filtra por nome (case-insensitive, contém)
+            funcionarios = [f.to_dict() for f in funcionarios_ref]
 
-            resultados = []
-            for doc in docs:
-                data = doc.to_dict()
-                nome_doc = data.get('nome', '').strip().lower()
-                if nome_doc == nome:
-                    resultados.append(Funcionario(
-                        id=doc.id,
-                        nome=data['nome'],
-                        matricula=data['matricula'],
-                        coren=data['coren'],
-                        cargo=data['cargo'],
-                        tipo_vinculo=data['tipo_vinculo'],
-                        data_admissao=data['data_admissao'],
-                        turno=data['turno'],
-                        local=data['local'],
-                        senha=data['senha']
-                    ))
-            return resultados
+            resultado = [
+                Funcionario.from_dict(f) for f in funcionarios
+                if nome_busca.lower() in f.get('nome', '').lower()
+            ]
+            return resultado
+            return resultado
+
         except Exception as e:
-            raise Exception(f"Erro ao buscar por nome: {str(e)}")
+            raise Exception(f"Erro ao buscar funcionários por nome: {str(e)}")
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            id=data.get("id"),
+            nome=data.get("nome"),
+            matricula=data.get("matricula"),
+            coren=data.get("coren"),
+            cargo=data.get("cargo"),
+            tipo_vinculo=data.get("tipo_vinculo"),
+            data_admissao=data.get("data_admissao"),  # se for string, converta se necessário
+            turno=data.get("turno"),
+            local=data.get("local"),
+            senha=data.get("senha")
+        )
 
 ''' ----  AJUSTAR DEPOIS DA IMPLEMENTAÇÃO DO FIREBASE -----
 

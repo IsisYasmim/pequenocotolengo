@@ -9,7 +9,6 @@ import Inicio
 db = get_db()  # inicializa o banco de dados
 
 def show():
-    Inicio.init_session()
     st.header("Adicionar Novo Prestador de Serviço")
     with st.form("form_adicionar_prestador"):
         nome = st.text_input("Nome completo*", key="nome_prestador")
