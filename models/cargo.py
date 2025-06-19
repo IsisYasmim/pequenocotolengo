@@ -11,17 +11,18 @@ class Cargo:
             cargos_ref = db.collection("cargos")
 
             # verifica se já existe um cargo com o mesmo nome
-            existente = cargos_ref.where("nome_do_cargo", "==", self.nome_do_cargo).get()
-            if existente:
+            if cargos_ref.where("nome_do_cargo", "==", self.nome_do_cargo).get():
                 raise ValueError("Já existe um cargo com esse nome.")
 
             # define o id a partir do tamanho da coleção
             novo_id = str(get_cargos_len() + 1)
+
             cargo_data = {
                 "id": novo_id,
                 "nome_do_cargo": self.nome_do_cargo
             }
-
+            self.id = novo_id  # atualiza o id do objeto
+            # salva o cargo no Firestore
             cargos_ref.document(self.id).set(cargo_data)
         except Exception as e:
             raise Exception(f"Erro ao salvar cargo: {str(e)}")

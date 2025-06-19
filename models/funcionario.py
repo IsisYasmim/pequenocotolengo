@@ -65,7 +65,7 @@ class Funcionario:
     @staticmethod
     def get_all(db):
         try:
-            funcionarios_ref = db.collection('funcionarios').get()
+            funcionarios_ref = db.collection('funcionarios').stream()
             return [f.to_dict() for f in funcionarios_ref]
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionários: {str(e)}")
@@ -74,7 +74,7 @@ class Funcionario:
     def buscar_por_coren(db, coren):
         try:
             resultado = db.collection('funcionarios').where('coren', '==', coren).get()
-            return resultado[0].to_dict() if resultado else None
+            return resultado.to_dict() if resultado else None
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionário: {str(e)}")
 
@@ -113,7 +113,6 @@ class Funcionario:
                 Funcionario.from_dict(f) for f in funcionarios
                 if nome_busca.lower() in f.get('nome', '').lower()
             ]
-            return resultado
             return resultado
 
         except Exception as e:
