@@ -62,6 +62,20 @@ class Funcionario:
         except Exception as e:
             raise Exception(f"Erro ao excluir funcionário: {str(e)}")
 
+    def update_por_id(self, db, dados_atualizados: dict):
+        try:
+            doc_ref = db.collection('funcionarios').document(str(self.id))
+            doc = doc_ref.get()
+
+            if not doc.exists:
+                raise ValueError(f"Funcionário com ID {id} não encontrado.")
+
+            # atualiza apenas os campos fornecidos como parametros
+            doc_ref.update(dados_atualizados)
+
+        except Exception as e:
+            raise Exception(f"Erro ao atualizar funcionário: {str(e)}")
+
     @staticmethod
     def get_all(db):
         try:
@@ -80,12 +94,12 @@ class Funcionario:
 
 
     @classmethod
-    def get_funcionario_por_id(db, id):
+    def get_funcionario_por_id(cls, db, id):
         try:
             doc = db.collection('funcionarios').document(str(id)).get()
             if doc.exists:
                 data = doc.to_dict()
-                return Funcionario(
+                return cls(
                 id=id,
                 nome=data['nome'],
                 matricula=data['matricula'],
@@ -95,26 +109,32 @@ class Funcionario:
                 data_admissao=data['data_admissao'],
                 turno=data['turno'],
                 local=data['local'],
-                senha=data['senha']  # já está em hash
-            )
+                senha=data['senha'] 
+                )
             else:
                 return None
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionário: {str(e)}")
 
-    @staticmethod
-    def buscar_por_nome(db, nome_busca):
+    @classmethod
+    def buscar_por_nome(cls, db, nome):
         try:
-            funcionarios_ref = db.collection('funcionarios').get()
-            # Filtra por nome (case-insensitive, contém)
-            funcionarios = [f.to_dict() for f in funcionarios_ref]
-
-            resultado = [
-                Funcionario.from_dict(f) for f in funcionarios
-                if nome_busca.lower() in f.get('nome', '').lower()
+            query = db.collection('funcionarios').where('nome', '==', nome).stream()
+            return [
+                cls(
+                    id=doc.id,  # <- importante
+                    nome=data.get("nome"),
+                    matricula=data.get("matricula"),
+                    coren=data.get("coren"),
+                    cargo=data.get("cargo"),
+                    tipo_vinculo=data.get("tipo_vinculo"),
+                    data_admissao=data.get("data_admissao"),
+                    turno=data.get("turno", ""),  # opcional
+                    local=data.get("local", "")   # opcional
+                )
+                for doc in query
+                if (data := doc.to_dict()) is not None
             ]
-            return resultado
-
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionários por nome: {str(e)}")
 
@@ -127,7 +147,7 @@ class Funcionario:
             coren=data.get("coren"),
             cargo=data.get("cargo"),
             tipo_vinculo=data.get("tipo_vinculo"),
-            data_admissao=data.get("data_admissao"),  # se for string, converta se necessário
+            data_admissao=data.get("data_admissao"),
             turno=data.get("turno"),
             local=data.get("local"),
             senha=data.get("senha")
