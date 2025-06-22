@@ -40,7 +40,7 @@ def show():
                     
                     # informações do prestador
                     cols = st.columns(3)
-                    cols[0].write(f"**Matrícula:** {prestador.id}")
+                    cols[0].write(f"**Matrícula:** {prestador.matricula}")
                     cols[1].write(f"**COREN:** {prestador.coren}")
                     cols[2].write(f"**Cargo:** {prestador.cargo}")
                     cols[0].write(f"**Tipo de Vínculo:** {prestador.tipo_vinculo}")
