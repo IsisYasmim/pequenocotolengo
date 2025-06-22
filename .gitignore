@@ -4,3 +4,5 @@ __pycache__/
 instance/
 serviceAccountKey.json
 testes.py
+jsontotoml.py
+.streamlit/secrets.toml

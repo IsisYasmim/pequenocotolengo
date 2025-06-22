@@ -1,11 +1,13 @@
 from datetime import date
 import bcrypt
 from firebase_config import get_db, get_funcionarios_len
+import uuid
+from datetime import datetime
 
 db = get_db()
 
 class Funcionario:
-    def __init__(self, nome, matricula, coren, cargo, tipo_vinculo, data_admissao, turno=None, local=None, senha=None, id=None, is_admin=None):
+    def __init__(self, nome, matricula, coren, cargo, tipo_vinculo, data_admissao, turno=None, local=None, senha=None, id=None):
         self.id = id
         self.nome = nome
         self.matricula = matricula
@@ -16,7 +18,6 @@ class Funcionario:
         self.turno = turno
         self.local = local
         self.senha = senha
-        self.is_admin = is_admin
 
     def set_senha(self, senha):
         return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8') 
@@ -33,7 +34,9 @@ class Funcionario:
                 raise ValueError("Já existe um funcionário com este COREN.")
 
             # define o id a partir do tamanho da coleção
-            novoId = str(get_funcionarios_len() + 1)
+            docs = funcionarios.stream()
+            ids = [int(doc.id) for doc in docs if doc.id.isdigit()]
+            novoId = str(max(ids) + 1) if ids else "1"
 
             funcionario_data = {
                 'id': novoId,
@@ -75,6 +78,35 @@ class Funcionario:
 
         except Exception as e:
             raise Exception(f"Erro ao atualizar funcionário: {str(e)}")
+    
+    def adicionar_folga(self, db, folga_data):
+        try:
+            folga_ref = db.collection('funcionarios').document(str(self.id)).collection('folgas')
+            folga_ref.add({
+                'folga_id': str(uuid.uuid1()),
+                'dia_inicio': folga_data['dia_inicio'],
+                'dia_fim': folga_data['dia_fim']
+            })
+        except Exception as e:
+            raise Exception(f"Erro ao adicionar folga: {str(e)}")
+
+    def remover_folga(self, db, folga_id):
+        try:
+            db.collection('funcionarios').document(str(self.id)) \
+              .collection('folgas').document(folga_id).delete()
+            return True
+        except Exception as e:
+            raise Exception(f"Erro ao remover folga: {str(e)}")
+
+    def obter_folgas(self, db):
+        try:
+            folgas_ref = db.collection('funcionarios').document(str(self.id)) \
+                        .collection('folgas').stream()
+            folgas = [{'id': folga.id, **folga.to_dict()} for folga in folgas_ref]
+            return folgas if folgas else None  # Retorna None se a lista estiver vazia
+        except Exception as e:
+            raise Exception(f"Erro ao obter folgas: {str(e)}") 
+            
 
     @staticmethod
     def get_all(db):
@@ -109,13 +141,77 @@ class Funcionario:
                 data_admissao=data['data_admissao'],
                 turno=data['turno'],
                 local=data['local'],
-                senha=data['senha'] 
+                senha=data['senha']
                 )
             else:
                 return None
         except Exception as e:
             raise Exception(f"Erro ao buscar funcionário: {str(e)}")
 
+    
+
+    @classmethod
+    def buscar_por_dia(cls, db, dia, mes, ano, last_day_parity=None):
+        try:
+            funcionarios_ref = db.collection('funcionarios')
+            docs = funcionarios_ref.stream()
+            prestadores = []
+
+            data_consulta = date(ano, mes, dia)
+
+            for doc in docs:
+                data = doc.to_dict()
+                turno = data.get("turno")
+                local = data.get("local", "UH")
+
+                # Verifica folgas
+                em_folga = False
+
+                try:
+                    folgas_ref = funcionarios_ref.document(doc.id).collection('folgas').stream()
+                    for folga in folgas_ref:
+                        folga_data = folga.to_dict()
+                        dia_inicio = datetime.fromisoformat(folga_data.get('dia_inicio')).date()
+                        dia_fim = datetime.fromisoformat(folga_data.get('dia_fim')).date()
+                        if dia_inicio <= data_consulta <= dia_fim:
+                            em_folga = True
+                            break
+                except Exception as e:
+                    raise Exception(f"Erro ao acessar folgas: {str(e)}")
+                
+                # Lógica de escala
+                if turno:
+                    if not em_folga:
+                        if last_day_parity is None:
+                            if (turno == "Dia 1" and dia % 2 == 1) or (turno == "Dia 2" and dia % 2 == 0) or \
+                            (turno == "Noite 1" and dia % 2 == 1) or (turno == "Noite 2" and dia % 2 == 0):
+                                data["id"] = doc.id
+                                data["local"] = local
+                                prestadores.append(cls.from_dict(data))
+                        else:
+                            if last_day_parity:
+                                if (turno == "Dia 2" and dia % 2 == 1) or (turno == "Dia 1" and dia % 2 == 0) or \
+                                (turno == "Noite 2" and dia % 2 == 1) or (turno == "Noite 1" and dia % 2 == 0):
+                                    data["id"] = doc.id
+                                    data["local"] = local
+                                    prestadores.append(cls.from_dict(data))
+                            else:
+                                if (turno == "Dia 1" and dia % 2 == 1) or (turno == "Dia 2" and dia % 2 == 0) or \
+                                (turno == "Noite 1" and dia % 2 == 1) or (turno == "Noite 2" and dia % 2 == 0):
+                                    data["id"] = doc.id
+                                    data["local"] = local
+                                    prestadores.append(cls.from_dict(data))
+                    else:
+                        # adiciona mesmo se estiver em folga, para aparecer na escala
+                        data["id"] = doc.id
+                        data["local"] = local
+                        prestadores.append(cls.from_dict(data))
+
+            return prestadores
+
+        except Exception as e:
+            raise Exception(f"Erro ao buscar funcionários por dia: {str(e)}")
+    
     @classmethod
     def buscar_por_nome(cls, db, nome):
         try:
@@ -152,61 +248,3 @@ class Funcionario:
             local=data.get("local"),
             senha=data.get("senha")
         )
-
-''' ----  AJUSTAR DEPOIS DA IMPLEMENTAÇÃO DO FIREBASE -----
-
-    @classmethod
-    def buscar_por_dia(cls, dia, mes, ano, last_day_parity=None):
-        try:
-            # Implementar a lógica de busca por dia no Firebase
-            # Esta é uma implementação simplificada - você precisará adaptar
-            all_funcionarios = db.collection('funcionarios').stream()
-            prestadores = []
-            
-            for doc in all_funcionarios:
-                funcionario = cls._doc_to_funcionario(doc)
-                if funcionario.turno:
-                    # Mesma lógica de paridade do dia original
-                    if last_day_parity is None:  # Mês atual
-                        if (funcionario.turno == "Dia 1" and dia % 2 == 1) or (funcionario.turno == "Dia 2" and dia % 2 == 0) or \
-                           (funcionario.turno == "Noite 1" and dia % 2 == 1) or (funcionario.turno == "Noite 2" and dia % 2 == 0):
-                            prestadores.append(funcionario)
-                    else:  # Próximo mês
-                        if last_day_parity:  # Último dia par
-                            if (funcionario.turno == "Dia 2" and dia % 2 == 1) or (funcionario.turno == "Dia 1" and dia % 2 == 0) or \
-                               (funcionario.turno == "Noite 2" and dia % 2 == 1) or (funcionario.turno == "Noite 1" and dia % 2 == 0):
-                                prestadores.append(funcionario)
-                        else:  # Último dia ímpar
-                            if (funcionario.turno == "Dia 1" and dia % 2 == 1) or (funcionario.turno == "Dia 2" and dia % 2 == 0) or \
-                               (funcionario.turno == "Noite 1" and dia % 2 == 1) or (funcionario.turno == "Noite 2" and dia % 2 == 0):
-                                prestadores.append(funcionario)
-                if not funcionario.local:
-                    funcionario.local = "UH"
-            return prestadores
-        except Exception as e:
-            raise Exception(f"Erro ao buscar por dia: {str(e)}")
-
-    @classmethod
-    def _doc_to_funcionario(cls, doc):
-        data = doc.to_dict()
-        data['data_admissao'] = date.fromisoformat(data['data_admissao'])
-        funcionario = cls(**{k: v for k, v in data.items() if k != '_senha_hash'})
-        if '_senha_hash' in data:
-            funcionario._senha_hash = data['_senha_hash']
-        return funcionario
-
-    @classmethod
-    def atualizar_aj_para_ft(cls):
-        try:
-            hoje = date.today()
-            funcionarios_ref = db.collection('funcionarios')
-            docs = funcionarios_ref.where('tipo_vinculo', '==', 'AJ - PROGRAMA ANJO').stream()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                data_admissao = date.fromisoformat(data['data_admissao'])
-                dias_desde_admissao = (hoje - data_admissao).days
-                if dias_desde_admissao >= 7:
-                    doc.reference.update({'tipo_vinculo': 'FT - EFETIVADO'})
-        except Exception as e:
-            raise Exception(f"Erro ao atualizar AJ para FT: {str(e)}")'''

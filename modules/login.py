@@ -55,3 +55,10 @@ def logout_sidebar():
             st.session_state["usuario"] = None
             st.success("Logout realizado com sucesso.")
             st.rerun()
+
+def check_login(db):
+    # Verifica se o usuário está logado
+    if "usuario" not in st.session_state:
+        st.warning("Faça login para acessar esta página")
+        login_screen(db)
+        st.rerun()

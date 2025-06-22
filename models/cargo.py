@@ -15,15 +15,17 @@ class Cargo:
                 raise ValueError("Já existe um cargo com esse nome.")
 
             # define o id a partir do tamanho da coleção
-            novo_id = str(get_cargos_len() + 1)
+            docs = cargos_ref.stream()
+            ids = [int(doc.id) for doc in docs if doc.id.isdigit()]
+            novoId = str(max(ids) + 1) if ids else "1"
 
             cargo_data = {
-                "id": novo_id,
+                "id": novoId,
                 "nome_do_cargo": self.nome_do_cargo
             }
-            self.id = novo_id  # atualiza o id do objeto
+            self.id = novoId  # atualiza o id do objeto
             # salva o cargo no Firestore
-            cargos_ref.document(self.id).set(cargo_data)
+            cargos_ref.document(novoId).set(cargo_data)
         except Exception as e:
             raise Exception(f"Erro ao salvar cargo: {str(e)}")
 
@@ -31,7 +33,13 @@ class Cargo:
     def get_all(db):
         try:
             cargos_ref = db.collection("cargos").stream()
-            return [doc.to_dict() for doc in cargos_ref]
+            cargos = []
+            
+            for doc in cargos_ref:
+                cargo_data = doc.to_dict()
+                cargo_data['id'] = doc.id 
+                cargos.append(cargo_data)
+            return cargos
         except Exception as e:
             raise Exception(f"Erro ao buscar cargos: {str(e)}")
 

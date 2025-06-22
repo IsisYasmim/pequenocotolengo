@@ -1,11 +1,14 @@
 import firebase_admin
+import streamlit as st
 from firebase_admin import credentials, firestore
 import os
+import json
 
 # inicia o db
 if not firebase_admin._apps:
+    key_dict= json.loads(st.secrets['textkey'])
     # credenciais NÃO podem ser públicas (não serão adicionadas ao repositório)
-    cred = credentials.Certificate('serviceAccountKey.json')
+    cred = credentials.Certificate(key_dict)
     firebase_admin.initialize_app(cred)
 
 # manda o db para as outras classes

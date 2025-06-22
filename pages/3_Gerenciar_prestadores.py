@@ -11,8 +11,9 @@ def show():
 
     st.header("Gerenciar Prestadores Cadastrados")
     login.logout_sidebar()
+    login.check_login(db)
 
-    funcionarios = [f["nome"] for f in Funcionario.get_all(db)]
+    funcionarios = sorted([f["nome"] for f in Funcionario.get_all(db)])
     nome_busca = st.selectbox("Digite o nome do prestador", funcionarios, key="busca_prestador", index=None, placeholder="Selecione um prestador")
 
     if nome_busca:
@@ -24,7 +25,20 @@ def show():
 
             for prestador in prestadores:
                 with st.container(border=True):
+                    # header do container
+                    #subheader_cols = st.columns(2)
                     st.subheader(f"Prestador(a): {prestador.nome}")
+                    excluir = st.button("🗑️ Excluir Prestador", type="primary")
+                    if excluir:
+                            try:
+                                prestador.delete(db)
+                                st.success("Prestador excluído com sucesso!")
+                                time.sleep(1)
+                                st.rerun()  # recarrega a página para refletir a exclusão
+                            except Exception as e:
+                                st.error(f"Erro ao excluir prestador: {str(e)}")
+                    
+                    # informações do prestador
                     cols = st.columns(3)
                     cols[0].write(f"**Matrícula:** {prestador.id}")
                     cols[1].write(f"**COREN:** {prestador.coren}")
@@ -78,12 +92,48 @@ def show():
                                     st.error(f"Erro ao atualizar agendamento: {str(e)}")
 
                     elif acao_ativa == "folga":
-                        st.write("### Registrar Folga")
-                        st.info("Funcionalidade de folga em construção.")
-                        
+                        with st.container(border=True):
+                            folgas = prestador.obter_folgas(db)
+                            if not folgas:
+                                st.write("Nenhuma folga cadastrada para este prestador.")
+                            else:
+                                st.write("**Folgas cadastradas:**")
+                                for folga in folgas:
+                                    cols = st.columns([4,1])
+                                    cols[0].write(f"• {folga['dia_inicio']} a {folga['dia_fim']}")
+                                    if cols[1].button("❌ Remover", key=f"remover_{folga['id']}"):
+                                        try:
+                                            prestador.remover_folga(db, folga['id'])
+                                            st.success("Folga removida com sucesso!")
+                                            time.sleep(1)
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Erro ao remover folga: {str(e)}")
+                            st.write("**Adicionar nova folga:**")
+                            col1, col2 = st.columns(2)
+                            data_inicio = col1.date_input("Data de início", key=f"data_inicio_{prestador.id}")
+                            data_fim = col2.date_input("Data de fim", key=f"data_fim_{prestador.id}")
+                            
+                            if st.button("Adicionar Folga", key=f"adicionar_folga_{prestador.id}", use_container_width=True):
+                                if data_inicio > data_fim:
+                                    st.error("A data de início não pode ser posterior à data de fim")
+                                else:
+                                    nova_folga = {
+                                        'dia_inicio': data_inicio.isoformat(),
+                                        'dia_fim': data_fim.isoformat()
+                                    }
+                                    
+                                    try:
+                                        prestador.adicionar_folga(db, nova_folga)
+                                        st.success("Folga adicionada com sucesso!")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erro ao adicionar folga: {str(e)}")
+                            
 
                     elif acao_ativa == "editar":
-                        with st.form("form_adicionar_prestador"):
+                        with st.container(border=True):
                             nome = st.text_input("Nome completo", key="nome_prestador")
                             matricula = st.text_input("Matrícula (MAT)", key="mat_prestador")
                             coren = st.text_input("COREN", key="coren_prestador")
@@ -94,14 +144,20 @@ def show():
                             else:
                                 cargo = st.selectbox()("Cargo", ["Nenhum cargo cadastrado"], key="cargo_prestador")
 
-                            data_admissao = st.date_input("Data de admissão", key="data_prestador")
+                            data_admissao = st.date_input(
+                                "Data de admissão",
+                                value=datetime.strptime(prestador.data_admissao, "%Y-%m-%d").date() if prestador.data_admissao else None,
+                                key="data_prestador"
+                            )
                             tipo_vinculo = st.selectbox(
                                 "Tipo de vínculo",
                                 ["AJ - PROGRAMA ANJO", "FT - EFETIVADO"],
                                 key="vinculo_prestador",
                                 index=["AJ - PROGRAMA ANJO", "FT - EFETIVADO"].index(prestador.tipo_vinculo) if prestador.tipo_vinculo else 0
                             )
-                            salvar = st.form_submit_button("Salvar")
+                            
+                            salvar = st.button("Salvar", use_container_width=True)
+                            
                         if salvar:
                             try:
                                 dados = {
@@ -118,10 +174,6 @@ def show():
                                 st.success("Prestador atualizado com sucesso!")
                             except Exception as e:
                                 st.error(f"Erro ao atualizar prestador: {str(e)}")
-                    
-                
-                        
-                        
 
         except Exception as e:
             st.error(f"Erro ao buscar prestadores: {str(e)}")

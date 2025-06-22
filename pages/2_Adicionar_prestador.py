@@ -10,6 +10,8 @@ db = get_db()  # inicializa o banco de dados
 
 def show():
     st.header("Adicionar Novo Prestador de Serviço")
+    login.check_login(db)
+    login.logout_sidebar()
     with st.form("form_adicionar_prestador"):
         nome = st.text_input("Nome completo*", key="nome_prestador")
         matricula = st.text_input("Matrícula (MAT)*", key="mat_prestador")
@@ -35,13 +37,12 @@ def show():
             return
 
         try:
-            st.write(f"DEBUG: Tentando adicionar prestador - Nome: {nome}, MAT: {matricula}, COREN: {coren}")
             novo = Funcionario(nome, matricula, coren, cargo, tipo_vinculo, data_admissao)
             novo.save(db)
             st.success("Prestador cadastrado com sucesso!")
         except Exception as e:
             st.error(f"Erro ao cadastrar prestador: {str(e)}")
-    login.logout_sidebar()
+    
 
 if __name__ == "__main__":
     show()
